@@ -1,19 +1,9 @@
+from datetime import datetime
 import glob
 
 import gpxpy
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
 import numpy as np
-
-plt.figure(dpi=800)
-# Using resolution='i' for faster runtime. Dealing with the mapping is food for 
-# thought, because it's really wasteful to draw the full earth just to look at 
-# a 30 km radius.
-m = Basemap(llcrnrlon=24.65 ,llcrnrlat=60.125, urcrnrlon=25.1, urcrnrlat=60.3, projection='merc', resolution='i')
-m.drawcoastlines(linewidth=0.01)
-m.fillcontinents(color='#202020',lake_color='w')
+import plotly.express as px
 
 # Read tracks from dir containing all tracks desired to be plotted
 track_files = glob.glob("tracks/*.GPX")
@@ -25,11 +15,35 @@ for f in track_files:
             t = []
             for segment in track.segments:
                 for point in segment.points:
-                    t.append((point.latitude, point.longitude))
+                    name = datetime.strftime(point.time, "%Y-%m-%d")
+                    t.append((point.latitude, point.longitude, name))
             tracks.append(t)
-                
-for track in tracks:
-    y, x = zip(*track)
-    cs = m.plot(x, y, c='aqua', linewidth=0.1, latlon=True)
 
-plt.savefig('running.png')
+lats = []
+lons = []
+names = []                
+c = "#00ffff"
+for track in tracks:
+    y, x, t = zip(*track)
+    lats.extend(y)
+    lons.extend(x)
+    names.extend(t)
+    # cutting the legs
+    lats.append(float("nan"))
+    lons.append(float("nan"))
+    names.append(float("nan"))
+
+map_style="carto-darkmatter"
+colors = [c]*len(lats)
+
+fig = px.line_map(
+                  lat=lats, 
+                  lon=lons, 
+                  hover_name=names, 
+                  map_style=map_style, 
+                 )
+
+fig.update_traces(line_color="cyan")
+fig.update_traces(line={'width': 0.2})
+
+fig.write_html('running.html')
